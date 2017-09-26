@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+import urllib2
+import smtplib
+import time
+
+import logging
+logger = logging.getLogger('pingdom')
+hdlr = logging.FileHandler('/home/ubuntu/pingdom/log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr)
+logger.setLevel(logging.INFO)
+
+SMTP_HOST = 'smtp.gmail.com'
+SMTP_USE_AUTHENTICATION = True
+SMTP_PORT_TLS = 587
+SMTP_PORT_SSL = 465
+SMTP_USERNAME = 'usernamehere'
+SMTP_PASSWORD = 'passwordhere'
+
+FROM_EMAIL = 'from@example.com'
+NOTIFY_EMAIL = 'notify@example.com'
+
+PLAIN_EMAIL_TEMPLATE = '''From: {from_address}
+To: {to}
+Subject: {subject}
+
+{body}
+'''
+
+TEST_URLS = [
+    'http://example.com/'
+]
+
+
+def send_email(recipient, subject, message_body):
+    message = PLAIN_EMAIL_TEMPLATE.format(from_address=FROM_EMAIL, to=recipient, subject=subject, body=message_body)
+    mail_server = smtplib.SMTP(SMTP_HOST, SMTP_PORT_TLS)
+    mail_server.ehlo()
+    mail_server.starttls()
+    mail_server.ehlo()
+    mail_server.login(SMTP_USERNAME, SMTP_PASSWORD)
+    mail_server.sendmail(SMTP_USERNAME, recipient, message)
+    mail_server.close()
+
+
+def test_url(url):
+    try:
+        response = urllib2.urlopen(url)
+        response.read()
+        logger.info("Accessed {0} successfully".format(url))
+    except urllib2.HTTPError as e:
+        subject = 'Failed to access {0}'.format(url)
+        message = e.read()
+        logger.error("Failed to access {0}. Sending email.".format(url))
+        send_email(NOTIFY_EMAIL, subject, message)
+
+
+def main():
+    logger.info('Pingdom script started')
+    for url in TEST_URLS:
+        test_url(url)
+        time.sleep(1)
+    logger.info('Pingom script stopped')
+
+
+if __name__ == '__main__':
+    main()
